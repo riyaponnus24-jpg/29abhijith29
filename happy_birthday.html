@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Happy Birthday</title>
+
+  <style>
+    :root{
+      --bg1: #ff6ec4;
+      --bg2: #7873f5;
+      --text: #ffffff;
+      --shadow: rgba(0,0,0,0.5);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+    }
+
+    body{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(270deg, var(--bg1), var(--bg2));
+      background-size: 400% 400%;
+      animation: bgMove 6s ease-in-out infinite;
+      color: var(--text);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50%{ background-position: 100% 50%; }
+      100%{ background-position: 0% 50%; }
+    }
+
+    h1{
+      margin:0;
+      font-weight:700;
+      /* responsive size */
+      font-size: clamp(2.25rem, 6vw + 1rem, 4.375rem); /* ~36px - 70px */
+      line-height:1.05;
+      text-shadow: 4px 4px 12px var(--shadow);
+    }
+
+    /* breathing/zoom animation */
+    @keyframes zoom {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    h1 { animation: zoom 3s ease-in-out infinite; }
+
+    /* play button (shown only if autoplay is blocked) */
+    .audio-controls {
+      margin-top: 1.25rem;
+    }
+
+    .play-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:.5rem;
+      background:rgba(255,255,255,0.12);
+      color:var(--text);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding:.5rem 1rem;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:1rem;
+      backdrop-filter: blur(6px);
+    }
+
+    .visually-hidden{
+      position:absolute!important;
+      height:1px;
+      width:1px;
+      overflow:hidden;
+      clip:rect(1px,1px,1px,1px);
+      white-space:nowrap;
+    }
+
+    /* Respect user's reduced motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
+
+    /* small screens: layout spacing */
+    @media (max-width:420px){
+      body{ padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 aria-live="polite">🎉 HAPPY BIRTHDAY 🎂<br>Enjoy Your Day! 🎈</h1>
+
+    <!-- Accessible audio player. Using Flask's url_for placeholder -->
+    <div class="audio-controls" aria-hidden="false">
+      <!-- Use controls so users can pause/adjust. Autoplay is attempted via JS; many browsers block autoplay until user interaction. -->
+      <audio id="birthday-audio" loop preload="auto" controls>
+        <source src="{{ url_for('static', filename='birthday.mp3') }}" type="audio/mpeg">
+        <!-- Fallback text for browsers without audio support -->
+        Your browser does not support the audio element. Please download the song:
+        <a href="{{ url_for('static', filename='birthday.mp3') }}">Download birthday.mp3</a>
+      </audio>
+
+      <!-- Shown only if autoplay is blocked; JS will unhide it -->
+      <div id="autoplay-fallback" style="display:none;margin-top:.75rem;">
+        <button id="play-btn" class="play-btn" aria-label="Play birthday song">
+          ▶️ Play the birthday song
+        </button>
+      </div>
+    </div>
+
+    <noscript style="display:block;margin-top:1rem;color:rgba(255,255,255,0.9)">
+      JavaScript is disabled in your browser. Use the audio controls above to play the song.
+    </noscript>
+  </main>
+
+  <script>
+    (function(){
+      const audio = document.getElementById('birthday-audio');
+      const fallback = document.getElementById('autoplay-fallback');
+      const playBtn = document.getElementById('play-btn');
+
+      // Try to autoplay. Many browsers will throw if autoplay is blocked.
+      function attemptAutoplay(){
+        if(!audio) return showFallback();
+        // Some browsers require audio to be muted for autoplay; we prefer audible playback,
+        // so attempt to play and fallback to showing a play button if blocked.
+        audio.play().then(() => {
+          // Autoplay succeeded; nothing more to do.
+          fallback.style.display = 'none';
+        }).catch((e) => {
+          // Autoplay blocked — show a visible play button for user to start playback.
+          showFallback();
+        });
+      }
+
+      function showFallback(){
+        if(fallback) fallback.style.display = 'block';
+      }
+
+      // Bind the fallback play button
+      if(playBtn){
+        playBtn.addEventListener('click', function(){
+          audio.play().catch(() => {
+            // if still blocked for some reason, focus the control and instruct user
+            audio.controls = true;
+            audio.focus();
+          });
+          // hide fallback once user clicked
+          if(fallback) fallback.style.display = 'none';
+        });
+      }
+
+      // Attempt autoplay after a short delay to allow page load (and avoid some race conditions)
+      window.addEventListener('load', function(){
+        // Small delay gives the browser a moment to register user gesture state in some contexts.
+        setTimeout(attemptAutoplay, 150);
+      });
+
+      // If user interacts with page (click/tap/keydown) and audio is paused, try to play then.
+      function userGestureHandler(){
+        if(audio && audio.paused){
+          audio.play().catch(()=>{ /* ignore */ });
+        }
+        window.removeEventListener('click', userGestureHandler);
+        window.removeEventListener('touchstart', userGestureHandler);
+        window.removeEventListener('keydown', userGestureHandler);
+      }
+      window.addEventListener('click', userGestureHandler);
+      window.addEventListener('touchstart', userGestureHandler);
+      window.addEventListener('keydown', userGestureHandler);
+    })();
+  </script>
+</body>
+</html>
